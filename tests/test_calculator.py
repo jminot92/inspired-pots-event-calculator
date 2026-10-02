@@ -84,16 +84,16 @@ def test_private_package_economics_do_not_depend_on_pottery_sales_target(simple_
     app.run()
     assert not app.exception
     assert next(m.value for m in app.metric if m.label == "Minimum to charge · ex VAT") == "£298.00"
-    assert any(w.value == "Base economics protected" for w in app.success)
+    assert any("Good pricing" in w.value or "Low price" in w.value for w in app.markdown)
     assert next(m.value for m in app.metric if m.label == "Staff commission") == "£31.00"
     assert not any("£250" in w.value for w in app.caption)
     assert not any("pottery target" in w.value.lower() for w in app.warning)
     labelled(app.number_input, "Customer price per painter · ex VAT").set_value(20.0).run()
-    assert any("Below minimum viable price" in w.value for w in app.error)
+    assert any("Below minimum" in w.value for w in app.markdown)
     assert not app.success
     labelled(app.number_input, "Painters").set_value(14)
     labelled(app.number_input, "Customer price per painter · ex VAT").set_value(30.0).run()
-    assert any(w.value == "Base economics protected" for w in app.success)
+    assert any("Good pricing" in w.value or "Low price" in w.value for w in app.markdown)
     assert not any("pottery target not met" in w.value for w in app.warning)
 
 
@@ -104,6 +104,19 @@ def test_directions_url():
     assert parsed.netloc == "www.google.com"
     assert parse_qs(parsed.query) == {"api": ["1"], "origin": ["Inspired Pots, Hexham, NE46 1BH, UK"],
                                       "destination": ["Venue & Hall, NE1 1AA"], "travelmode": ["driving"]}
+
+
+def test_travel_warning_clears_when_both_values_entered(simple_app):
+    app = simple_app
+    assert any("Add both travel distance" in w.value for w in app.warning)
+    assert not any("Base economics protected" in w.value for w in app.success)
+    labelled(app.number_input, "Miles to destination · one way").set_value(10.0).run()
+    assert any("Add both travel distance" in w.value for w in app.warning)
+    labelled(app.number_input, "Estimated travel time · minutes one way").set_value(20.0).run()
+    assert not any("Add both travel distance" in w.value for w in app.warning)
+    assert not any("Travel estimate incomplete" in w.value for w in app.caption)
+    labelled(app.get("button_group"), "Calculator navigation").set_value("Private Studio Hire").run()
+    assert not any("Add both travel distance" in w.value for w in app.warning)
 
 
 def test_inbound_default_and_commission_switch(simple_app):

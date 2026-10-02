@@ -12,7 +12,7 @@ def render(factory):
     with factory() as db:
         settings = get_settings(db)
     vat = settings["vat_rate"]
-    st.markdown('<style>.block-container{max-width:1500px}</style>', unsafe_allow_html=True)
+    st.markdown('<style>.block-container{max-width:2000px}</style>', unsafe_allow_html=True)
     catalogue = load_catalogue()
     items = catalogue["items"]
     selections = st.session_state.setdefault("pottery_selections", {name: {} for name in PACKAGES})

@@ -21,7 +21,7 @@ def render(factory, user, allow_save=False):
         if key.startswith("simple_") and not key.startswith("simple_choose_"):
             st.session_state[key] = st.session_state[key]
     st.markdown("""<style>
-    .block-container{max-width:1320px}
+    .block-container{max-width:1760px;padding-left:2rem;padding-right:2rem}
     [data-testid=stAppViewContainer],[data-testid=stHeader]{background:#f4f1e8}
     [data-testid=stCaptionContainer],[data-testid=stCaptionContainer] p{color:#4d6169;opacity:1}
     [data-testid=stNumberInput] input,[data-testid=stTextInput] input{background:#fff;color:#1a2b33}
@@ -38,6 +38,7 @@ def render(factory, user, allow_save=False):
     .st-key-customer-price [data-testid=stWidgetLabel] p,
     .st-key-customer-price [data-testid=stCaptionContainer],
     .st-key-customer-price [data-testid=stCaptionContainer] p{color:#fff;opacity:1}
+    .st-key-customer-price [data-testid=stAlert] p{color:#1a2b33}
     .st-key-enquiry-source{background:#236d70;border:1px solid #ffffff80;border-radius:10px;padding:14px 16px;gap:6px}
     .st-key-enquiry-source [data-testid=stWidgetLabel] p{color:#fff;font-size:1.1rem;font-weight:750}
     .pricing-health{border:1px solid #c4d4d3;border-radius:10px;padding:14px 16px;margin-bottom:8px;background:#f4f1e8;color:#1a2b33}
@@ -72,7 +73,7 @@ def render(factory, user, allow_save=False):
     .st-key-calculator-nav button p{font-weight:600}
     .st-key-calculator-nav [role=radio][aria-checked=true],.st-key-calculator-nav button[aria-pressed=true]{background:#3b9d9c!important;color:#fff!important;border-color:#3b9d9c!important}
     .st-key-calculator-nav [role=radio][aria-checked=true] p,.st-key-calculator-nav button[aria-pressed=true] p{color:#fff!important}
-    @media(max-width:600px){.st-key-calculator-nav [role=radiogroup]{gap:6px!important}.st-key-calculator-nav button{padding:10px 8px}.st-key-customer-price,.st-key-summary-charge,.st-key-summary-commission,.st-key-summary-minimum{padding:18px}}
+    @media(max-width:600px){.block-container{padding-left:1rem;padding-right:1rem}.st-key-calculator-nav [role=radiogroup]{gap:6px!important}.st-key-calculator-nav button{padding:10px 8px}.st-key-customer-price,.st-key-summary-charge,.st-key-summary-commission,.st-key-summary-minimum{padding:18px}}
     </style>""", unsafe_allow_html=True)
     if not st.session_state.get("simple_private_rules_v2"):
         for key, old_default in (("simple_staff_Private Studio Hire", 2), ("simple_duration_Private Studio Hire", 3.0)):
@@ -183,6 +184,8 @@ def render(factory, user, allow_save=False):
                 else:
                     price = st.number_input("Customer price per painter · ex VAT", min_value=0.0, value=28.0 if remote else 30.0, step=1.0, format="%.2f", key="simple_price_" + event + mode)
                     st.caption("Adjust this price to see the charge and commission update below.")
+                if remote and (decimal(return_miles) == 0 or decimal(return_minutes) == 0):
+                    st.warning("Add both travel distance and estimated time to include travel in this price.")
         q = {"customer_type": "Business", "event_type": event, "guest_count": guests, "package": package, "upgrade_id": None,
              "staff_count": settings["remote_staff"] if remote else settings["private_staff"],
              "duration_hours": settings["remote_hours"] if remote else settings["private_hours"], "private_mode": mode,
@@ -262,12 +265,6 @@ def render(factory, user, allow_save=False):
         with st.container(border=True, key="summary-minimum"):
             st.metric("Minimum to charge · ex VAT", currency(result["protected_floor"]))
             st.caption(f"Minimum per painter: {currency(decimal(result['protected_floor']) / guests)} ex VAT")
-            if decimal(result["total_ex_vat"]) < decimal(result["protected_floor"]):
-                st.error("Below minimum viable price · " + currency(decimal(result["protected_floor"]) - decimal(result["total_ex_vat"])) + " short")
-            else:
-                st.success("Base economics protected")
-            if remote and (decimal(return_miles) == 0 or decimal(return_minutes) == 0):
-                st.caption("Travel estimate incomplete. Enter both distance and time before using this price.")
             with st.expander("How the minimum is calculated"):
                 labels = {"pottery": "Protected pottery", "consumables": "Consumables", "event_labour": "Event staff", "travel_labour": "Travel staff", "vehicle": "Vehicle"}
                 for key, label in labels.items():
