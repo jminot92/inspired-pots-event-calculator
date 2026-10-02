@@ -67,7 +67,7 @@ def authenticate(factory):
                 st.session_state.authenticated_user = user.id
                 st.rerun()
             st.session_state.login_retry_at = time.monotonic() + 3
-            st.error("Email or password was not recognised.")
+            st.error("Username or password was not recognised." if secret("APP_MODE", "simple") == "simple" else "Email or password was not recognised.")
     st.stop()
 
 

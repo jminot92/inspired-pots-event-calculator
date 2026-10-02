@@ -126,6 +126,24 @@ def test_inbound_default_and_commission_switch(simple_app):
     assert not app.exception
 
 
+def test_hosted_shared_username_login(tmp_path, monkeypatch):
+    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'hosted.sqlite3'}")
+    monkeypatch.setenv("AUTH_MODE", "password")
+    monkeypatch.setenv("APP_MODE", "simple")
+    monkeypatch.setenv("BOOTSTRAP_ADMIN_EMAIL", "ipots")
+    monkeypatch.setenv("BOOTSTRAP_ADMIN_PASSWORD", "studio123")
+    st.cache_resource.clear()
+    app = AppTest.from_file(str(Path(__file__).resolve().parents[1] / "app.py"), default_timeout=30).run()
+    assert not app.exception
+    assert not app.metric
+    assert not any(w.label == "Email" for w in app.text_input)
+    labelled(app.text_input, "Username").set_value("ipots")
+    labelled(app.text_input, "Password").set_value("studio123")
+    labelled(app.button, "Sign in").click().run()
+    assert not app.exception
+    assert any(m.label == "Customer charge · ex VAT" for m in app.metric)
+
+
 @pytest.mark.parametrize("floor,commission,status", [
     (101, 0, "Below minimum"), (100, 0, "Close to break-even"),
     (95.01, 0, "Close to break-even"), (95, 0, "Low price"),
