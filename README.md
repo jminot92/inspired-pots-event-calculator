@@ -16,7 +16,7 @@ The launcher uses the local Codex Python/dependencies on this computer. For anot
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
-.\.venv\Scripts\python.exe -m streamlit run app.py
+.\.venv\Scripts\python.exe -m streamlit run app.py --server.address=127.0.0.1
 ```
 
 ## Use it
@@ -42,7 +42,7 @@ Save/reopen, PDF/email exports, the full quote editor, saved-quote booking statu
 
 To bring back the full interface later, set `APP_MODE=advanced` before starting Streamlit. Its setup/reference documentation is retained in [docs/advanced.md](docs/advanced.md).
 
-The app defaults to trusted local administrator access and binds only to loopback. Before exposing it to other computers, enable password authentication as described in the advanced documentation. SQLite data lives in `data/quotes.sqlite3`.
+The local launcher binds only to loopback and enables trusted local administrator access. Hosted use requires password authentication; see [deployment instructions](docs/deployment.md). SQLite data lives in `data/quotes.sqlite3`.
 
 ## Verification
 

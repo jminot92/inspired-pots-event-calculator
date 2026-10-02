@@ -20,10 +20,10 @@ Python 3.12 or newer:
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
-.\.venv\Scripts\python.exe -m streamlit run app.py
+.\.venv\Scripts\python.exe -m streamlit run app.py --server.address=127.0.0.1
 ```
 
-Start Streamlit **from this folder** so it picks up `.streamlit/config.toml` and secrets. Initially the server binds only to `127.0.0.1`. Local setup mode gives trusted users of this computer administrator access. Local mode is blocked when the configured server address is not loopback.
+Start Streamlit **from this folder** so it picks up `.streamlit/config.toml` and secrets. The local launcher binds only to `127.0.0.1`. Local setup mode gives trusted users of this computer administrator access. Local mode is blocked when the configured server address is not loopback.
 
 ## First-use workflow
 
