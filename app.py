@@ -54,7 +54,7 @@ def authenticate(factory):
     st.title("Inspired Pots")
     st.caption("Sign in to build your next event quote.")
     with st.form("login"):
-        email = st.text_input("Email")
+        email = st.text_input("Username" if secret("APP_MODE", "simple") == "simple" else "Email")
         password = st.text_input("Password", type="password")
         submit = st.form_submit_button("Sign in", type="primary")
     if submit:

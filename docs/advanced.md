@@ -59,7 +59,7 @@ Copy `.streamlit/secrets.toml.example` to `.streamlit/secrets.toml`, or set the 
 | `AUTH_MODE` | `local` (default, loopback only) or `password` |
 | `BOOTSTRAP_ADMIN_EMAIL` | Email for the first admin when the database is empty |
 | `BOOTSTRAP_ADMIN_NAME` | Display name for the first admin |
-| `BOOTSTRAP_ADMIN_PASSWORD` | Required in password mode when creating the first account; 12+ characters |
+| `BOOTSTRAP_ADMIN_PASSWORD` | Required in password mode when creating the first account; 8+ characters |
 | `DATABASE_URL` | Optional SQLAlchemy URL; default SQLite under `data/quotes.sqlite3` |
 
 Shopify sync fetches all variant pages before making local changes. HTTP errors are sanitized so tokens are not printed. Google Routes queries the outward and return journeys separately, and stores the result source. Journey estimates are traffic-unaware; verify timing for the event. Changing the location or manually editing route values requires travel confirmation again.

@@ -4,8 +4,8 @@ import secrets
 
 
 def hash_password(password):
-    if len(password) < 12:
-        raise ValueError("Use a password of at least 12 characters.")
+    if len(password) < 8:
+        raise ValueError("Use a password of at least 8 characters.")
     salt = secrets.token_hex(16)
     digest = hashlib.pbkdf2_hmac("sha256", password.encode(), salt.encode(), 600_000).hex()
     return f"pbkdf2_sha256$600000${salt}${digest}"
