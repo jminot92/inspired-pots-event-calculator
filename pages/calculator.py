@@ -2,7 +2,7 @@
 import copy
 import streamlit as st
 from services.database import get_settings, pricing_context, package_context
-from services.pricing import calculate_quote, decimal, money, pricing_health
+from services.pricing import calculate_quote, decimal, money, pricing_health, suggested_price
 from services.exports import currency
 from services.travel import directions_link
 from services.calculations import list_calculations, get_calculation, save_calculation
@@ -13,6 +13,10 @@ from services.pottery_selection import load_catalogue, selected_package
 
 def choose_package(name):
     st.session_state.simple_package = name
+
+
+def apply_suggested_price(key, value):
+    st.session_state[key] = float(value)
 
 
 def render(factory, user, allow_save=False):
@@ -67,6 +71,17 @@ def render(factory, user, allow_save=False):
     .st-key-pottery-picker button[kind=primary] p{color:#fff}
     .st-key-pottery-picker button[kind=secondary]{background:#faf8f2;color:#1a2b33;border:1px solid #c4d4d3}
     .st-key-pottery-picker button:hover{border-color:#3b9d9c;box-shadow:0 0 0 2px #3b9d9c20}
+    .st-key-private-price-options [role=radiogroup]{gap:10px}
+    .st-key-private-price-options [data-testid=stRadioGroup],.st-key-private-price-options [data-testid=stRadioGroup]>div{width:100%}
+    .st-key-private-price-options [data-testid=stRadioOption],.st-key-private-price-options [data-baseweb=radio]{border:1px solid #bbcaca;background:#faf8f2;border-radius:10px;padding:12px 14px;min-height:52px;width:100%;margin:0;cursor:pointer}
+    .st-key-private-price-options [data-testid=stRadioOption]:has(input:checked),.st-key-private-price-options [data-baseweb=radio]:has(input:checked){border:2px solid #3b9d9c;background:#3b9d9c;padding:11px 13px}
+    .st-key-private-price-options [data-testid=stRadioOption] p,.st-key-private-price-options [data-baseweb=radio] p{font-weight:650}
+    .st-key-private-price-options [data-testid=stRadioOption]:has(input:checked) p,.st-key-private-price-options [data-baseweb=radio]:has(input:checked) p{color:#fff}
+    .st-key-private-price-options [data-testid=stRadioOption]>div>div:first-child{width:20px;height:20px;flex-shrink:0}
+    .st-key-private-price-options [data-testid=stRadioOption]:has(input:checked)>div>div:first-child{border-color:#fff}
+    .st-key-private-price-options [data-testid=stRadioOption]:focus-within,.st-key-private-price-options [data-baseweb=radio]:focus-within{outline:2px solid #236d70;outline-offset:2px}
+    .st-key-customer-price [data-testid=stButton] button{background:#fff;color:#1a2b33;border:1px solid #fff;min-height:42px}
+    .st-key-customer-price [data-testid=stButton] button p{color:#1a2b33}
     .st-key-calculator-nav{margin-bottom:8px}
     .st-key-calculator-nav [data-testid=stButtonGroup]{background:#e7efec;padding:10px;border:1px solid #c4d4d3;border-radius:14px}
     .st-key-calculator-nav [role=radiogroup]{gap:10px!important}
@@ -147,7 +162,8 @@ def render(factory, user, allow_save=False):
             st.markdown("### Event details")
             mode = "Package pricing"
             if not remote:
-                mode = st.radio("Private studio price", ["Package pricing", "Event fee + pottery on the day"], horizontal=False, key="simple_private_mode")
+                with st.container(key="private-price-options"):
+                    mode = st.radio("Private studio price", ["Package pricing", "Event fee + pottery on the day"], horizontal=False, key="simple_private_mode")
                 st.caption("Private hire includes dedicated staff and exclusive use of the studio. Package pricing also includes pottery.")
             fee_mode = not remote and mode == "Event fee + pottery on the day"
             a, b = st.columns(2)
@@ -162,6 +178,15 @@ def render(factory, user, allow_save=False):
                         amount = decimal(item["retail_inc_vat"]) / (1 + decimal(settings["vat_rate"])) if item.get("override_ex_vat") is None else decimal(item["override_ex_vat"])
                         column.button(f"{item['name']}  \n{currency(amount)}", key="package_pick_" + item["name"], type="primary" if item["name"] == package else "secondary", width="stretch", on_click=choose_package, args=(item["name"],))
                 st.caption("Indicative pottery values; the full event price also covers staffing and event costs.")
+                with st.expander("See pottery in packages"):
+                    for column, item in zip(st.columns(3), packages):
+                        with column:
+                            st.markdown(f"**{item['name']}**")
+                            with st.container(height=150, border=False):
+                                for choice in item["choices"]:
+                                    st.caption(choice)
+                                if not item["source"].startswith("Highest selected"):
+                                    st.caption("Indicative choices · configure pieces in Pottery selection.")
             return_miles, return_minutes, destination = "0", "0", ""
             if remote:
                 st.markdown("**Travel to the event**")
@@ -180,12 +205,16 @@ def render(factory, user, allow_save=False):
                     st.caption("ON · Staff commission applies to the surplus." if generated else "OFF · Inbound enquiry — no staff commission.")
                 st.markdown("**Set your studio hire fee**" if fee_mode else "**Set your customer price**")
                 if fee_mode:
+                    price_key = "simple_hire_total"
                     price = st.number_input("Studio hire charge · ex VAT", min_value=0.0, value=200.0, step=10.0, format="%.2f", key="simple_hire_total")
                     st.caption("Total charge for exclusive studio hire. Pottery is paid separately on the day.")
                 else:
+                    price_key = "simple_price_" + event + mode
                     price = st.number_input("Customer price per painter · ex VAT", min_value=0.0, value=28.0 if remote else 30.0, step=1.0, format="%.2f", key="simple_price_" + event + mode)
                     st.caption("Adjust this price to see the charge and commission update below.")
-                if remote and (decimal(return_miles) == 0 or decimal(return_minutes) == 0):
+                price_actions = st.empty()
+                travel_pending = remote and (decimal(return_miles) == 0 or decimal(return_minutes) == 0)
+                if travel_pending:
                     st.warning("Add both travel distance and estimated time to include travel in this price.")
         q = {"customer_type": "Business", "event_type": event, "guest_count": guests, "package": package, "upgrade_id": None,
              "staff_count": settings["remote_staff"] if remote else settings["private_staff"],
@@ -231,6 +260,14 @@ def render(factory, user, allow_save=False):
                 st.caption("Pottery is paid for separately on the day and is excluded from this event fee.")
         result = calculate_quote(q, c)
         health = pricing_health(result["total_ex_vat"], result["protected_floor"], result["staff_commission"])
+        commission_rate = (c["settings"]["remote_commission_rate"] if remote and c["settings"]["remote_commission_enabled"] else "0.50" if not remote else "0") if generated else "0"
+        suggestion = suggested_price(result["protected_floor"], 1 if fee_mode else guests, commission_rate)
+        with price_actions.container():
+            meets_suggestion = suggestion is not None and decimal(price) >= suggestion
+            label = "Use suggested price · add travel first" if travel_pending else ("Price already meets suggestion · " if meets_suggestion else "Use suggested price · ") + f"{currency(suggestion)} ex VAT" + (" total" if fee_mode else " / painter") if suggestion is not None else "Suggested price unavailable"
+            st.button(label, key="suggested_price_action", width="stretch", disabled=travel_pending or suggestion is None or meets_suggestion,
+                      on_click=apply_suggested_price, args=(price_key, suggestion),
+                      help="Raises a low price to the start of Good pricing: at least 15% studio headroom after commission. It never reduces an existing price. You can still edit the price yourself.")
         if fee_mode:
             st.caption("Pottery chosen on the day: aim for £250 total pottery sales (inc VAT), separate from the studio hire fee.")
         if allow_save:
@@ -253,8 +290,10 @@ def render(factory, user, allow_save=False):
         with st.container(border=True, key="summary-charge"):
             st.metric("Customer charge · ex VAT", currency(result["total_ex_vat"]))
             st.caption(("Studio hire only · " if fee_mode else f"{currency(result['price_per_person_ex_vat'])} per painter ex VAT · ") + f"{currency(result['total_inc_vat'])} total inc VAT (VAT {currency(result['vat_amount'])})")
-            colour = "low" if health["status"] == "Below minimum" else "caution" if health["status"] in ("Close to break-even", "Low price") else "healthy"
-            st.markdown(f'<div class="pricing-health {colour}">Pricing health<strong>{health["status"]}</strong>{health["guidance"]}</div>', unsafe_allow_html=True)
+            colour = "caution" if travel_pending else "low" if health["status"] == "Below minimum" else "caution" if health["status"] in ("Close to break-even", "Low price") else "healthy"
+            status = "Provisional pricing" if travel_pending else health["status"]
+            guidance = "Add travel distance and time before judging this price." if travel_pending else health["guidance"]
+            st.markdown(f'<div class="pricing-health {colour}">Pricing health<strong>{status}</strong>{guidance}</div>', unsafe_allow_html=True)
             st.caption(f"Studio headroom after commission: {currency(health['retained'])} ex VAT · {decimal(health['margin']) * 100:.2f}% of the charge. Based on protected values, not net profit.")
             with st.expander("What makes a healthy price?"):
                 st.write("After protected costs and any staff commission: below £0 = Below minimum; under 5% of the charge = Close to break-even; 5–15% = Low price; 15–25% = Good pricing; 25% or more = Strong pricing.")

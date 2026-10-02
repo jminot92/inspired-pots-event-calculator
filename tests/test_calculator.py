@@ -109,14 +109,53 @@ def test_directions_url():
 def test_travel_warning_clears_when_both_values_entered(simple_app):
     app = simple_app
     assert any("Add both travel distance" in w.value for w in app.warning)
+    assert any("Provisional pricing" in w.value for w in app.markdown)
+    assert next(w for w in app.button if w.label.startswith("Use suggested price")).disabled
     assert not any("Base economics protected" in w.value for w in app.success)
     labelled(app.number_input, "Miles to destination · one way").set_value(10.0).run()
     assert any("Add both travel distance" in w.value for w in app.warning)
     labelled(app.number_input, "Estimated travel time · minutes one way").set_value(20.0).run()
     assert not any("Add both travel distance" in w.value for w in app.warning)
+    assert not any("Provisional pricing" in w.value for w in app.markdown)
     assert not any("Travel estimate incomplete" in w.value for w in app.caption)
     labelled(app.get("button_group"), "Calculator navigation").set_value("Private Studio Hire").run()
     assert not any("Add both travel distance" in w.value for w in app.warning)
+
+
+def test_suggested_price_handles_commission_and_total_hire(simple_app):
+    app = simple_app
+    labelled(app.number_input, "Customer price per painter · ex VAT").set_value(20.0)
+    labelled(app.number_input, "Miles to destination · one way").set_value(10.0)
+    labelled(app.number_input, "Estimated travel time · minutes one way").set_value(20.0)
+    app.run()
+    next(w for w in app.button if w.label.startswith("Use suggested price")).click().run()
+    first_price = labelled(app.number_input, "Customer price per painter · ex VAT").value
+    assert any("Good pricing" in w.value for w in app.markdown)
+    assert next(w for w in app.button if w.label.startswith("Price already meets suggestion")).disabled
+    labelled(app.toggle, "Staff-generated enquiry").set_value(True).run()
+    next(w for w in app.button if w.label.startswith("Use suggested price")).click().run()
+    assert labelled(app.number_input, "Customer price per painter · ex VAT").value > first_price
+    assert any("Good pricing" in w.value for w in app.markdown)
+    labelled(app.get("button_group"), "Calculator navigation").set_value("Private Studio Hire").run()
+    assert any(w.label == "See pottery in packages" for w in app.expander)
+    labelled(app.radio, "Private studio price").set_value("Event fee + pottery on the day").run()
+    assert not any(w.label == "See pottery in packages" for w in app.expander)
+    next(w for w in app.button if w.label.startswith("Use suggested price")).click().run()
+    assert any("Good pricing" in w.value for w in app.markdown)
+    assert not app.exception
+
+
+@pytest.mark.parametrize("painters,share", [(1, "0"), (12, "0"), (20, "0.5"), (15, "0.5")])
+def test_suggested_price_reaches_retained_margin_after_rounding(painters, share):
+    from services.pricing import suggested_price, calculate_remote_commission, decimal, pricing_health
+    floor = decimal("298.01")
+    amount = suggested_price(floor, painters, share)
+    total = amount * painters
+    commission = calculate_remote_commission(total, floor, share)
+    assert decimal(pricing_health(total, floor, commission)["margin"]) >= decimal("0.15")
+    previous_total = (amount - decimal("0.01")) * painters
+    previous_commission = calculate_remote_commission(previous_total, floor, share)
+    assert decimal(pricing_health(previous_total, floor, previous_commission)["margin"]) < decimal("0.15")
 
 
 def test_inbound_default_and_commission_switch(simple_app):

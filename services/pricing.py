@@ -3,7 +3,7 @@
 Round each extended cost once, then sum. Never round the £5/1.2 unit
 consumables value before multiplying by guests.
 """
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import Decimal, ROUND_HALF_UP, ROUND_CEILING
 
 ZERO = Decimal("0")
 CENT = Decimal("0.01")
@@ -118,6 +118,25 @@ def pricing_health(total_ex_vat, protected_floor, staff_commission):
     else:
         status, guidance = "Strong pricing", "Strong headroom. Focus on making the package worth the price."
     return {"status": status, "guidance": guidance, "retained": str(retained), "margin": str(margin)}
+
+
+def suggested_price(protected_floor, painters=1, commission_rate="0"):
+    """Lowest penny price retaining at least 15% after rounded commission."""
+    floor, share = positive(protected_floor), rate(commission_rate)
+    count = int(painters)
+    if count < 1:
+        raise ValueError("At least one painter is required.")
+    target = Decimal("0.15")
+    if 1 - share <= target:
+        return None
+    price = (floor * (1 - share) / (1 - share - target) / count).quantize(CENT, rounding=ROUND_CEILING)
+    while price > 0:
+        total = money(price * count)
+        commission = calculate_remote_commission(total, floor, share)
+        if total - floor - commission >= total * target:
+            break
+        price += CENT
+    return price
 
 
 def calculate_quote(q, context):
