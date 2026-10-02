@@ -39,6 +39,7 @@ def render(factory, user, allow_save=False):
     .st-key-customer-price [data-testid=stCaptionContainer],
     .st-key-customer-price [data-testid=stCaptionContainer] p{color:#fff;opacity:1}
     .st-key-customer-price [data-testid=stAlert] p{color:#1a2b33}
+    .st-key-customer-price [data-testid=stAlertContainer]{background:#fff2de;border:1px solid #ffb25a;color:#1a2b33}
     .st-key-enquiry-source{background:#236d70;border:1px solid #ffffff80;border-radius:10px;padding:14px 16px;gap:6px}
     .st-key-enquiry-source [data-testid=stWidgetLabel] p{color:#fff;font-size:1.1rem;font-weight:750}
     .pricing-health{border:1px solid #c4d4d3;border-radius:10px;padding:14px 16px;margin-bottom:8px;background:#f4f1e8;color:#1a2b33}
