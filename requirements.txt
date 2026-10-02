@@ -1,0 +1,6 @@
+streamlit>=1.50,<2
+SQLAlchemy>=2.0,<3
+reportlab>=4.2,<5
+pandas>=2.2,<3
+pytest>=8,<10
+pypdf>=5,<7
